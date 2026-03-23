@@ -173,17 +173,21 @@
   </div>
 </div>
 
-<!-- ── Bottom Nav ───────────────────────────────────────────── -->
-<div class="bottom-nav">
-  <div class="nav-item active" data-tab="setup">
-    <div class="nav-icon">📋</div>
-    <div>Setup</div>
-  </div>
-  <div class="nav-item" data-tab="proj">
-    <div class="nav-icon">📈</div>
-    <div>Projections</div>
+<!-- ── Rename Account Modal ──────────────────────────────────── -->
+<div class="modal-overlay hidden" id="rename-overlay">
+  <div class="modal">
+    <h3>Edit Account Name</h3>
+    <div class="field-wrap">
+      <div class="field-label">Account Name</div>
+      <input class="field-input" id="rename-input" type="text" placeholder="e.g. Chase Checking">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="rename-cancel">Cancel</button>
+      <button class="btn-primary"   id="rename-confirm">Save</button>
+    </div>
   </div>
 </div>
+
 
 <script src="engine.js"></script>
 <script src="app.js"></script>

@@ -31,13 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function switchTab(name) {
     document.querySelectorAll('.main-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.tab === name));
     TAB_SETUP.classList.toggle('active', name === 'setup');
     TAB_PROJ .classList.toggle('active', name === 'proj');
     if (name === 'proj') renderProjections();
   }
 
-  document.querySelectorAll('[data-tab]').forEach(el => {
+  document.querySelectorAll('.main-tab[data-tab]').forEach(el => {
     el.addEventListener('click', () => switchTab(el.dataset.tab));
   });
 
@@ -47,8 +46,26 @@ document.addEventListener('DOMContentLoaded', () => {
     strip.innerHTML = '';
     state.accounts.forEach(acct => {
       const chip = document.createElement('div');
-      chip.className = 'acc-chip' + (acct.id === state.activeAccountId ? ' active' : '');
-      chip.textContent = acct.name;
+      const isActive = acct.id === state.activeAccountId;
+      chip.className = 'acc-chip' + (isActive ? ' active' : '');
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = acct.name;
+      chip.appendChild(nameSpan);
+
+      // Edit pencil — only visible on active chip
+      if (isActive) {
+        const editIcon = document.createElement('span');
+        editIcon.className = 'acc-edit-icon';
+        editIcon.textContent = ' ✎';
+        editIcon.title = 'Rename account';
+        editIcon.addEventListener('click', e => {
+          e.stopPropagation();
+          showRenameModal(acct);
+        });
+        chip.appendChild(editIcon);
+      }
+
       chip.addEventListener('click', () => {
         state.activeAccountId = acct.id;
         save();
@@ -62,6 +79,37 @@ document.addEventListener('DOMContentLoaded', () => {
     addChip.addEventListener('click', () => showAddAccountModal());
     strip.appendChild(addChip);
   }
+
+  // ── Rename Account Modal ─────────────────────────────────
+  let _renameTarget = null;
+
+  function showRenameModal(acct) {
+    _renameTarget = acct;
+    const overlay = document.getElementById('rename-overlay');
+    const input   = document.getElementById('rename-input');
+    input.value = acct.name;
+    overlay.classList.remove('hidden');
+    setTimeout(() => input.focus(), 50);
+  }
+
+  document.getElementById('rename-cancel').addEventListener('click', () => {
+    document.getElementById('rename-overlay').classList.add('hidden');
+  });
+  document.getElementById('rename-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+  });
+  document.getElementById('rename-confirm').addEventListener('click', () => {
+    const name = document.getElementById('rename-input').value.trim();
+    if (_renameTarget && name) {
+      _renameTarget.name = name;
+      save();
+      renderAll();
+    }
+    document.getElementById('rename-overlay').classList.add('hidden');
+  });
+  document.getElementById('rename-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('rename-confirm').click();
+  });
 
   // ── Add Account Modal ────────────────────────────────────
   function showAddAccountModal() {
@@ -317,19 +365,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     E.WEEK_BUCKETS.forEach(bucket => {
       const isCurrentBucket = bucket.id === currentBucket;
-      const isFebOnly = bucket.id === 'w5';
       const bucketExpenses = acct.expenses.filter(e => e.bucketId === bucket.id);
       const total = bucketExpenses.reduce((s, e) => s + e.amount, 0);
 
       const group = document.createElement('div');
       group.className = 'week-group';
 
-      const febNote = isFebOnly ? `<span class="tag tag-feb">Feb → shifts up</span>` : '';
       const nowTag  = isCurrentBucket ? `<span class="tag tag-current">Current</span>` : '';
 
       group.innerHTML = `
         <div class="week-group-header">
-          <div class="week-label">${bucket.label} ${nowTag} ${febNote}</div>
+          <div class="week-label">${bucket.label} ${nowTag}</div>
           <div class="week-total" style="color:${total > 0 ? 'var(--red)' : 'var(--text-dim)'}">${total > 0 ? E.fmt(-total) : '—'}</div>
         </div>
         <div class="week-body ${isCurrentBucket ? '' : 'hidden'}" id="wbody-${bucket.id}">
@@ -375,16 +421,11 @@ document.addEventListener('DOMContentLoaded', () => {
     row.className = 'expense-row';
     row.innerHTML = `
       <input class="expense-name-in" type="text" placeholder="Expense name" value="${esc(exp.name)}">
-      <input class="expense-day-in"  type="number" min="${bucket.start}" max="${bucket.end}" placeholder="Day" value="${exp.day || ''}">
       <input class="expense-amt-in"  type="number" step="0.01" min="0" placeholder="0.00" value="${exp.amount || ''}">
       <div class="remove-btn">−</div>
     `;
 
     row.querySelector('.expense-name-in').addEventListener('input', e => { exp.name = e.target.value; save(); });
-    row.querySelector('.expense-day-in').addEventListener('input', e => {
-      exp.day = parseInt(e.target.value) || bucket.start;
-      save();
-    });
     row.querySelector('.expense-amt-in').addEventListener('input', e => {
       exp.amount = parseFloat(e.target.value) || 0;
       save();
@@ -661,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     proj.forEach((week, i) => {
-      container.appendChild(buildWeekCard(week, i, hasAnyVariable));
+      container.appendChild(buildWeekCard(week, i, acct));
     });
   }
 
@@ -671,8 +712,25 @@ document.addEventListener('DOMContentLoaded', () => {
     strip.innerHTML = '';
     state.accounts.forEach(acct => {
       const chip = document.createElement('div');
-      chip.className = 'acc-chip' + (acct.id === activeAcct.id ? ' active' : '');
-      chip.textContent = acct.name;
+      const isActive = acct.id === activeAcct.id;
+      chip.className = 'acc-chip' + (isActive ? ' active' : '');
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = acct.name;
+      chip.appendChild(nameSpan);
+
+      if (isActive) {
+        const editIcon = document.createElement('span');
+        editIcon.className = 'acc-edit-icon';
+        editIcon.textContent = ' ✎';
+        editIcon.title = 'Rename account';
+        editIcon.addEventListener('click', e => {
+          e.stopPropagation();
+          showRenameModal(acct);
+        });
+        chip.appendChild(editIcon);
+      }
+
       chip.addEventListener('click', () => {
         state.activeAccountId = acct.id;
         save();
@@ -682,7 +740,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function buildWeekCard(week, i, hasAnyVariable) {
+  function buildWeekCard(week, i, acct) {
     const t = E.today();
     const todayDate = new Date(t.year, t.month - 1, t.day);
     const isCurrentWeek = todayDate >= week.window.start && todayDate <= week.window.end;
@@ -695,6 +753,84 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const nowTag = isCurrentWeek ? '<span class="tag tag-current">Now</span>' : '';
 
+    // ── Income detail items ──────────────────────────────
+    let incomeDetailHtml = '';
+    for (const inc of acct.income) {
+      const pays = E.payDatesInWindow(inc, week.window.start, week.window.end);
+      if (!pays.length) continue;
+      const amt = inc.type === 'fixed'
+        ? inc.fixedAmount * pays.length
+        : inc.expectedAmount * pays.length;
+      if (amt === 0) continue;
+      const name = inc.name || 'Unnamed Income';
+      const varNote = inc.type === 'variable' ? ' <span style="font-size:10px;opacity:0.7">(variable)</span>' : '';
+      incomeDetailHtml += `
+        <div class="proj-detail-item">
+          <span class="detail-name">${esc(name)}${varNote}</span>
+          <span class="detail-amt detail-income">${E.fmt(amt, true)}</span>
+        </div>`;
+    }
+    // Transfers in as income detail
+    if (week.transfersIn > 0) {
+      incomeDetailHtml += `
+        <div class="proj-detail-item">
+          <span class="detail-name">Transfers In</span>
+          <span class="detail-amt detail-income">${E.fmt(week.transfersIn, true)}</span>
+        </div>`;
+    }
+
+    // ── Expense detail items ─────────────────────────────
+    let expenseDetailHtml = '';
+    const { start, end } = week.window;
+    const monthSegs = E.getMonthsInWindow(start, end);
+
+    for (const { year, month, dayStart, dayEnd } of monthSegs) {
+      const maxDay = E.daysInMonth(year, month);
+      for (const exp of acct.expenses) {
+        const effDay = Math.min(exp.day, maxDay);
+        if (effDay >= dayStart && effDay <= dayEnd && exp.amount > 0) {
+          const name = exp.name || 'Unnamed Expense';
+          expenseDetailHtml += `
+            <div class="proj-detail-item">
+              <span class="detail-name">${esc(name)}</span>
+              <span class="detail-amt detail-expense">${E.fmt(-exp.amount)}</span>
+            </div>`;
+        }
+      }
+    }
+
+    // One-time expenses
+    for (const ot of acct.oneTimeExpenses) {
+      if (!ot.date) continue;
+      const [oy, om, od] = ot.date.split('-').map(Number);
+      const otDate = new Date(oy, om - 1, od);
+      if (otDate >= start && otDate <= end && ot.amount > 0) {
+        const name = ot.name || 'One-Time Expense';
+        expenseDetailHtml += `
+          <div class="proj-detail-item">
+            <span class="detail-name">${esc(name)} <span style="font-size:10px;opacity:0.7">(one-time)</span></span>
+            <span class="detail-amt detail-onetime">${E.fmt(-ot.amount)}</span>
+          </div>`;
+      }
+    }
+
+    // Savings + transfers out as expense details
+    if (week.savingsOut > 0) {
+      expenseDetailHtml += `
+        <div class="proj-detail-item">
+          <span class="detail-name">Savings</span>
+          <span class="detail-amt detail-expense">${E.fmt(-week.savingsOut)}</span>
+        </div>`;
+    }
+    if (week.transfersOut > 0) {
+      expenseDetailHtml += `
+        <div class="proj-detail-item">
+          <span class="detail-name">Transfers Out</span>
+          <span class="detail-amt detail-expense">${E.fmt(-week.transfersOut)}</span>
+        </div>`;
+    }
+
+    // ── Scenario pills ───────────────────────────────────
     let scenarioHtml = '';
     if (week.hasVariable) {
       scenarioHtml = `
@@ -710,25 +846,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
     }
 
-    const incomeLabel = week.hasVariable
-      ? `${E.fmt(week.totalIncome, true)} <span class="c-dim">incl. variable</span>`
-      : `${E.fmt(week.totalIncome, true)} ${week.incomeFixed > 0 ? '<span class="c-dim">fixed</span>' : ''}`;
-
-    const oneTimeRow = week.oneTimeExpenses > 0
-      ? `<div class="proj-row"><span class="proj-row-label">− One-Time</span><span class="proj-row-val c-expense">${E.fmt(-week.oneTimeExpenses)}</span></div>`
-      : '';
-
-    const savingsRow = week.savingsOut > 0
-      ? `<div class="proj-row"><span class="proj-row-label">− Savings</span><span class="proj-row-val c-expense">${E.fmt(-week.savingsOut)}</span></div>`
-      : '';
-
-    const transferOutRow = week.transfersOut > 0
-      ? `<div class="proj-row"><span class="proj-row-label">− Transfers Out</span><span class="proj-row-val c-expense">${E.fmt(-week.transfersOut)}</span></div>`
-      : '';
-
-    const transferInRow = week.transfersIn > 0
-      ? `<div class="proj-row"><span class="proj-row-label">+ Transfers In</span><span class="proj-row-val c-income">${E.fmt(week.transfersIn, true)}</span></div>`
-      : '';
+    // ── Total income label ───────────────────────────────
+    const totalIncomeAmt = week.totalIncome + week.transfersIn;
+    const totalExpAmt    = week.totalExpenses + week.savingsOut + week.transfersOut;
+    const varNote = week.hasVariable ? '<span class="c-dim"> incl. variable</span>' : '';
 
     card.innerHTML = `
       <div class="week-card-header">
@@ -742,23 +863,42 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
       <div class="week-card-body">
+
         <div class="proj-row">
           <span class="proj-row-label">Starting Balance</span>
           <span class="proj-row-val c-balance">${E.fmt(week.startBalance)}</span>
         </div>
-        <div class="proj-row">
-          <span class="proj-row-label">+ Income</span>
-          <span class="proj-row-val c-income">${incomeLabel}</span>
-        </div>
-        ${transferInRow}
-        <div class="proj-row">
-          <span class="proj-row-label">− Expenses</span>
-          <span class="proj-row-val c-expense">${E.fmt(-week.scheduledExpenses)}</span>
-        </div>
-        ${oneTimeRow}
-        ${savingsRow}
-        ${transferOutRow}
+
         <div class="proj-divider"></div>
+
+        ${incomeDetailHtml
+          ? `<div class="proj-group-total">
+               <span class="proj-row-label">+ Income</span>
+               <span class="proj-row-val c-income">${E.fmt(totalIncomeAmt, true)}${varNote}</span>
+             </div>
+             ${incomeDetailHtml}`
+          : `<div class="proj-row">
+               <span class="proj-row-label">+ Income</span>
+               <span class="proj-row-val c-income">${E.fmt(0, true)}</span>
+             </div>`
+        }
+
+        <div class="proj-divider"></div>
+
+        ${expenseDetailHtml
+          ? `<div class="proj-group-total">
+               <span class="proj-row-label">− Expenses</span>
+               <span class="proj-row-val c-expense">${E.fmt(-totalExpAmt)}</span>
+             </div>
+             ${expenseDetailHtml}`
+          : `<div class="proj-row">
+               <span class="proj-row-label">− Expenses</span>
+               <span class="proj-row-val c-expense">${E.fmt(0)}</span>
+             </div>`
+        }
+
+        <div class="proj-divider"></div>
+
         <div class="proj-row">
           <span class="proj-row-label">Ending Balance</span>
           <span class="proj-row-val ${headroom >= 0 ? 'c-income' : 'c-expense'}">${E.fmt(week.endBalanceExpected)}</span>
