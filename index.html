@@ -25,11 +25,15 @@
         <span class="logo-sub">Budgeting</span>
       </div>
       <div class="topbar-right">
-        <button class="btn-ghost" id="export-btn" title="Export data">⬆ Export</button>
-        <button class="btn-ghost" id="import-btn" title="Import data">⬇ Import</button>
-        <input type="file" id="import-file-input" accept=".json" style="display:none">
-        <div class="date-badge" id="today-date">Loading...</div>
-        <button class="btn-ghost" id="pdf-btn">PDF</button>
+        <div class="topbar-date-side">
+          <div class="date-badge" id="today-date">Loading...</div>
+        </div>
+        <div class="topbar-btns-side">
+          <button class="btn-ghost" id="export-btn">⬆ Export</button>
+          <button class="btn-ghost" id="import-btn">⬇ Import</button>
+          <input type="file" id="import-file-input" accept=".json" style="display:none">
+          <button class="btn-ghost" id="pdf-btn">PDF</button>
+        </div>
       </div>
     </div>
 

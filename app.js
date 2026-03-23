@@ -826,8 +826,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const todayDate = new Date(t.year, t.month - 1, t.day);
     const isCurrentWeek = todayDate >= week.window.start && todayDate <= week.window.end;
 
-    const headroom = week.endBalanceExpected;
-    const posNeg   = headroom >= 0 ? 'pos' : 'neg';
+    // Headroom = net change this week (income minus all outflows)
+    const headroom       = week.headroomExpected;
+    const headroomPosNeg = headroom >= 0 ? 'pos' : 'neg';
+
+    // Ending balance sign drives its own color
+    const endingPosNeg = week.endBalanceExpected >= 0 ? 'c-income' : 'c-expense';
 
     const card = document.createElement('div');
     card.className = 'week-card';
@@ -918,11 +922,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="scenario-range">
           <div class="range-pill pill-best">
             <span class="range-pill-label">Best Case</span>
-            ${E.fmt(week.endBalanceBest, true)}
+            ${E.fmt(week.headroomBest, true)}
           </div>
           <div class="range-pill pill-worst">
             <span class="range-pill-label">Worst Case</span>
-            ${E.fmt(week.endBalanceMin, true)}
+            ${E.fmt(week.headroomMin, true)}
           </div>
         </div>`;
     }
@@ -939,7 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="week-card-dates">${E.fmtDateShort(week.window.start)} – ${E.fmtDateShort(week.window.end)}</div>
         </div>
         <div>
-          <div class="headroom ${posNeg}">${E.fmt(headroom, true)}</div>
+          <div class="headroom ${headroomPosNeg}">${E.fmt(headroom, true)}</div>
           <div class="headroom-label">headroom</div>
         </div>
       </div>
@@ -982,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="proj-row">
           <span class="proj-row-label">Ending Balance</span>
-          <span class="proj-row-val ${headroom >= 0 ? 'c-income' : 'c-expense'}">${E.fmt(week.endBalanceExpected)}</span>
+          <span class="proj-row-val ${endingPosNeg}">${E.fmt(week.endBalanceExpected)}</span>
         </div>
         ${scenarioHtml}
       </div>

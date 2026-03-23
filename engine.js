@@ -321,13 +321,15 @@ function buildProjection(account, allAccounts, referenceDate) {
     const endBest = runningBalance + w.netBest;
     const result = {
       window, ...w,
-      startBalance: runningBalance,
+      startBalance:       runningBalance,
       endBalanceExpected: endExp,
       endBalanceMin:      endMin,
       endBalanceBest:     endBest,
-      headroomExpected:   endExp,
-      headroomMin:        endMin,
-      headroomBest:       endBest,
+      // Headroom = net change this week (income - all outflows).
+      // Positive = you gained money this week. Negative = you spent more than came in.
+      headroomExpected: w.netExpected,
+      headroomMin:      w.netMin,
+      headroomBest:     w.netBest,
     };
     runningBalance = endExp;
     return result;

@@ -95,20 +95,31 @@ body {
   color: var(--accent);
   letter-spacing: -0.3px;
 }
+/* "Budgeting" — same style as ClearFlow */
 .logo-sub {
   font-family: 'DM Serif Display', serif;
   font-size: 19px;
   font-weight: 400;
-  letter-spacing: -0.2px;
-  color: white;
-  -webkit-text-stroke: 1.2px var(--accent);
-  paint-order: stroke fill;
+  letter-spacing: -0.3px;
+  color: var(--accent);
 }
 .topbar-right {
   display: flex;
-  gap: 7px;
   align-items: center;
-  flex-wrap: nowrap;
+  width: 100%;
+  gap: 0;
+}
+.topbar-date-side {
+  flex: 0 0 45%;
+  display: flex;
+  align-items: center;
+}
+.topbar-btns-side {
+  flex: 0 0 55%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
 }
 .date-badge {
   background: var(--surface2);
