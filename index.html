@@ -17,25 +17,24 @@
 <body>
 <div class="app-shell">
 
-  <!-- Top Bar -->
-  <div class="topbar">
-    <div class="logo-wrap">
-      <span class="logo">ClearFlow</span>
-      <span class="logo-sub">Budgeting</span>
+  <!-- Sticky Header -->
+  <div class="sticky-header">
+    <div class="topbar">
+      <div class="logo-wrap">
+        <span class="logo">ClearFlow Budgeting</span>
+      </div>
+      <div class="topbar-right">
+        <div class="date-badge" id="today-date">Loading...</div>
+        <button class="btn-ghost" id="pdf-btn">PDF</button>
+      </div>
     </div>
-    <div class="topbar-right">
-      <div class="date-badge" id="today-date">Loading...</div>
-      <button class="btn-ghost" id="pdf-btn">PDF</button>
+
+    <div class="account-strip" id="account-strip"></div>
+
+    <div class="main-tabs">
+      <div class="main-tab active" data-tab="setup">Budget Setup</div>
+      <div class="main-tab" data-tab="proj">Projections</div>
     </div>
-  </div>
-
-  <!-- Account Strip -->
-  <div class="account-strip" id="account-strip"></div>
-
-  <!-- Main Tabs -->
-  <div class="main-tabs">
-    <div class="main-tab active" data-tab="setup">Budget Setup</div>
-    <div class="main-tab" data-tab="proj">Projections</div>
   </div>
 
   <!-- SETUP TAB -->
@@ -117,6 +116,8 @@
       <button class="btn-reset" id="reset-btn">Reset All Data</button>
     </div>
 
+    <div class="copyright">© 2026 Shane Enochs · ClearFlow Budgeting</div>
+
   </div>
   </div>
 
@@ -131,6 +132,8 @@
     </div>
 
     <div id="proj-weeks"></div>
+
+    <div class="copyright">© 2026 Shane Enochs · ClearFlow Budgeting</div>
 
   </div>
   </div>

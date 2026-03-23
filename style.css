@@ -54,6 +54,14 @@ body {
   box-shadow: 0 0 40px rgba(0,0,0,0.08);
 }
 
+/* ── Sticky Header ──────────────────────────────────────── */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  box-shadow: var(--shadow-md);
+}
+
 /* ── Topbar ─────────────────────────────────────────────── */
 .topbar {
   display: flex;
@@ -62,12 +70,8 @@ body {
   padding: 13px 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 200;
-  box-shadow: var(--shadow);
 }
-.logo-wrap { display: flex; align-items: baseline; gap: 7px; }
+.logo-wrap { display: flex; align-items: baseline; gap: 0; }
 .logo {
   font-family: 'DM Serif Display', serif;
   font-size: 20px;
@@ -76,13 +80,9 @@ body {
 }
 .logo-sub {
   font-family: 'DM Serif Display', serif;
-  font-size: 17px;
-  font-weight: 400;
-  letter-spacing: -0.2px;
-  /* Green outline, white fill — using text-stroke + color trick */
-  color: white;
-  -webkit-text-stroke: 1.2px var(--accent);
-  paint-order: stroke fill;
+  font-size: 20px;
+  color: var(--accent);
+  letter-spacing: -0.3px;
 }
 .topbar-right { display: flex; gap: 8px; align-items: center; }
 .date-badge {
@@ -605,3 +605,11 @@ body {
 /* ── Utility ────────────────────────────────────────────── */
 .mt-6 { margin-top: 6px; }
 .text-dim { color: var(--text-dim); font-size: 11px; }
+
+.copyright {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 16px 0 8px;
+  font-family: 'DM Sans', sans-serif;
+}
