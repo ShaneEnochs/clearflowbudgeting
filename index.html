@@ -25,6 +25,9 @@
       </div>
       <div class="topbar-right">
         <div class="date-badge" id="today-date">Loading...</div>
+        <button class="btn-ghost" id="export-btn" title="Export data">⬆ Export</button>
+        <button class="btn-ghost" id="import-btn" title="Import data">⬇ Import</button>
+        <input type="file" id="import-file-input" accept=".json" style="display:none">
         <button class="btn-ghost" id="pdf-btn">PDF</button>
       </div>
     </div>
@@ -176,6 +179,19 @@
       <div class="modal-actions">
         <button class="btn-secondary" id="reset-cancel">Cancel</button>
         <button class="btn-danger"    id="reset-confirm">Yes, Reset Everything</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Confirmation Modal -->
+  <div class="modal-overlay hidden" id="import-overlay">
+    <div class="modal">
+      <h3>Import Data?</h3>
+      <p style="font-size:13px; color:var(--text-muted); line-height:1.5;">This will <strong>replace</strong> all current data with the contents of the imported file. Your existing data will be lost.</p>
+      <p style="font-size:12px; color:var(--text-dim); margin-top:6px;" id="import-filename"></p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="import-cancel">Cancel</button>
+        <button class="btn-primary"   id="import-confirm">Yes, Import</button>
       </div>
     </div>
   </div>

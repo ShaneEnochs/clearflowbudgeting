@@ -129,6 +129,69 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   });
 
+  // ── Export Data ──────────────────────────────────────────
+  document.getElementById('export-btn').addEventListener('click', () => {
+    const t = E.today();
+    const filename = `clearflow-backup-${t.year}-${String(t.month).padStart(2,'0')}-${String(t.day).padStart(2,'0')}.json`;
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ── Import Data ──────────────────────────────────────────
+  let _pendingImportData = null;
+
+  document.getElementById('import-btn').addEventListener('click', () => {
+    document.getElementById('import-file-input').value = ''; // reset so same file can be re-picked
+    document.getElementById('import-file-input').click();
+  });
+
+  document.getElementById('import-file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        // Basic validation — must have accounts array
+        if (!parsed.accounts || !Array.isArray(parsed.accounts)) {
+          alert('Invalid ClearFlow backup file. Please choose a valid export.');
+          return;
+        }
+        _pendingImportData = parsed;
+        document.getElementById('import-filename').textContent = '📄 ' + file.name;
+        document.getElementById('import-overlay').classList.remove('hidden');
+      } catch {
+        alert('Could not read the file. Make sure it is a valid ClearFlow JSON export.');
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('import-cancel').addEventListener('click', () => {
+    document.getElementById('import-overlay').classList.add('hidden');
+    _pendingImportData = null;
+  });
+  document.getElementById('import-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) {
+      e.currentTarget.classList.add('hidden');
+      _pendingImportData = null;
+    }
+  });
+  document.getElementById('import-confirm').addEventListener('click', () => {
+    if (!_pendingImportData) return;
+    state = _pendingImportData;
+    save();
+    renderAll();
+    document.getElementById('import-overlay').classList.add('hidden');
+    _pendingImportData = null;
+  });
+
   // ── Add Account Modal ────────────────────────────────────
   function showAddAccountModal() {
     const overlay = document.getElementById('modal-overlay');
@@ -228,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateTodayDate() {
     const t = E.today();
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    document.getElementById('today-date').textContent = `📅 ${months[t.month-1]} ${t.day}, ${t.year}`;
+    document.getElementById('today-date').textContent = `${months[t.month-1]} ${t.day}, ${t.year}`;
   }
 
   // ── Balance Card ─────────────────────────────────────────
