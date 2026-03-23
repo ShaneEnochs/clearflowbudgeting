@@ -334,9 +334,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateIncomeTotal(acct) {
-    const total = acct.income.reduce((s, i) => s + (i.type === 'fixed' ? i.fixedAmount : i.expectedAmount), 0);
+    // Convert each income source to a monthly equivalent based on frequency
+    const monthly = acct.income.reduce((s, inc) => {
+      const amt = inc.type === 'fixed' ? inc.fixedAmount : inc.expectedAmount;
+      switch (inc.frequency) {
+        case 'weekly':    return s + amt * 4.33;
+        case 'biweekly':  return s + amt * 2.17;
+        case 'monthly':   return s + amt;
+        default:          return s + amt * 2.17;
+      }
+    }, 0);
     const el = document.getElementById('income-total');
-    el.textContent = E.fmt(total, true);
+    el.textContent = E.fmt(monthly, true) + '/mo';
     el.style.color = 'var(--green)';
   }
 
