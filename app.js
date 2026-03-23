@@ -111,6 +111,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') document.getElementById('rename-confirm').click();
   });
 
+  // ── Reset All Data ───────────────────────────────────────
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    document.getElementById('reset-overlay').classList.remove('hidden');
+  });
+  document.getElementById('reset-cancel').addEventListener('click', () => {
+    document.getElementById('reset-overlay').classList.add('hidden');
+  });
+  document.getElementById('reset-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+  });
+  document.getElementById('reset-confirm').addEventListener('click', () => {
+    localStorage.removeItem('clearflow_v1');
+    document.getElementById('reset-overlay').classList.add('hidden');
+    state = E.createDefaultState();
+    save();
+    renderAll();
+  });
+
   // ── Add Account Modal ────────────────────────────────────
   function showAddAccountModal() {
     const overlay = document.getElementById('modal-overlay');

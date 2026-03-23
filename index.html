@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="app-shell">
 
 <!-- ── Top Bar ─────────────────────────────────────────────── -->
 <div class="topbar">
@@ -131,11 +132,13 @@
     </div>
   </div>
 
-</div>
-</div>
+  <!-- Reset -->
+  <div style="padding: 8px 0 4px; text-align: center;">
+    <button class="btn-reset" id="reset-btn">🗑 Reset All Data</button>
+  </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     PROJECTIONS TAB
+</div>
+</div>
      ══════════════════════════════════════════════════════════ -->
 <div class="tab-content" id="tab-proj">
 <div class="page">
@@ -173,7 +176,17 @@
   </div>
 </div>
 
-<!-- ── Rename Account Modal ──────────────────────────────────── -->
+<!-- ── Reset Confirmation Modal ──────────────────────────────── -->
+<div class="modal-overlay hidden" id="reset-overlay">
+  <div class="modal">
+    <h3>Reset All Data?</h3>
+    <p style="font-size:13px; color:var(--text-muted); line-height:1.5;">This will permanently delete all accounts, income, expenses, and saved data. This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="reset-cancel">Cancel</button>
+      <button class="btn-danger"    id="reset-confirm">Yes, Reset Everything</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="rename-overlay">
   <div class="modal">
     <h3>Edit Account Name</h3>
@@ -191,5 +204,6 @@
 
 <script src="engine.js"></script>
 <script src="app.js"></script>
+</div><!-- /.app-shell -->
 </body>
 </html>
