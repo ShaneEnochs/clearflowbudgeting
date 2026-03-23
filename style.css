@@ -29,7 +29,11 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 14px; -webkit-tap-highlight-color: transparent; }
+html {
+  font-size: 14px;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
 
 body {
   font-family: 'DM Sans', sans-serif;
@@ -37,6 +41,7 @@ body {
   color: var(--text);
   min-height: 100vh;
   padding-bottom: 24px;
+  overflow-x: hidden;
 }
 
 /* Center the app on wide screens */
@@ -62,6 +67,7 @@ body {
   z-index: 200;
   box-shadow: var(--shadow);
 }
+.logo-wrap { display: flex; align-items: baseline; gap: 7px; }
 .logo {
   font-family: 'DM Serif Display', serif;
   font-size: 20px;
@@ -69,11 +75,14 @@ body {
   letter-spacing: -0.3px;
 }
 .logo-sub {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12px;
-  font-weight: 300;
-  color: var(--text-muted);
-  margin-left: 5px;
+  font-family: 'DM Serif Display', serif;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.2px;
+  /* Green outline, white fill — using text-stroke + color trick */
+  color: white;
+  -webkit-text-stroke: 1.2px var(--accent);
+  paint-order: stroke fill;
 }
 .topbar-right { display: flex; gap: 8px; align-items: center; }
 .date-badge {
@@ -536,7 +545,7 @@ body {
   border-radius: var(--radius) var(--radius) 0 0;
   padding: 20px 16px 30px;
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
   display: flex;
   flex-direction: column;
   gap: 12px;
