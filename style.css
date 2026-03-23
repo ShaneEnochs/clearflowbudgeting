@@ -486,7 +486,7 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .week-card-label {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -496,16 +496,19 @@ body {
   gap: 6px;
 }
 .week-card-dates { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
-.headroom { font-family: 'DM Serif Display', serif; font-size: 22px; text-align: right; line-height: 1.1; }
+.headroom { font-family: 'DM Serif Display', serif; font-size: 26px; text-align: right; line-height: 1.1; }
 .headroom.pos { color: var(--green); }
 .headroom.neg { color: var(--red);   }
-.headroom-label { font-size: 10px; color: var(--text-muted); text-align: right; }
+.headroom-label { font-size: 11px; color: var(--text-muted); text-align: right; }
 
 .week-card-body { padding: 13px 15px; display: flex; flex-direction: column; gap: 7px; }
 
 .proj-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
 .proj-row-label { color: var(--text-muted); }
 .proj-row-val   { font-weight: 600; }
+
+/* Bigger font for Starting Balance and Ending Balance values */
+.proj-balance-big { font-family: 'DM Serif Display', serif; font-size: 18px; }
 .c-income   { color: var(--green); }
 .c-expense  { color: var(--red);   }
 .c-neutral  { color: var(--text);  }

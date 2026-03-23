@@ -245,17 +245,20 @@ document.addEventListener('DOMContentLoaded', () => {
       <table>
         <tr>
           <th>Week</th><th>Dates</th><th>Income</th><th>Expenses</th>
-          <th>Savings</th><th>Ending Balance</th><th>Headroom</th>
+          <th>Savings</th><th>Change</th><th>Ending Balance</th><th>Headroom (safe to spend)</th>
         </tr>`;
 
     proj.forEach((w, i) => {
-      const posNeg = w.endBalanceExpected >= 0 ? 'pos' : 'neg';
+      const posNeg     = w.endBalanceExpected >= 0 ? 'pos' : 'neg';
+      const changeCls  = w.weekChange >= 0 ? 'pos' : 'neg';
+      const arrow      = w.weekChange >= 0 ? '▲' : '▼';
       html += `<tr>
         <td>Week ${i + 1}</td>
         <td class="sub">${E.fmtDateShort(w.window.start)} – ${E.fmtDateShort(w.window.end)}</td>
         <td class="pos">${E.fmt(w.totalIncome, true)}</td>
         <td class="neg">${E.fmt(-(w.totalExpenses), true)}</td>
         <td class="neg">${E.fmt(-(w.savingsOut), true)}</td>
+        <td class="${changeCls}">${arrow} ${E.fmt(Math.abs(w.weekChange))}</td>
         <td class="${posNeg}">${E.fmt(w.endBalanceExpected)}</td>
         <td class="${posNeg}">${E.fmt(w.headroomExpected, true)}</td>
       </tr>`;
@@ -290,8 +293,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateTodayDate() {
     const t = E.today();
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    document.getElementById('today-date').textContent = `${months[t.month-1]} ${t.day}, ${t.year}`;
+    const months   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const dow = weekdays[t.raw.getDay()];
+    document.getElementById('today-date').textContent = `${dow}, ${months[t.month-1]} ${t.day}, ${t.year}`;
   }
 
   // ── Balance Card ─────────────────────────────────────────
@@ -299,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('balance-input');
     input.value = acct.balance !== undefined ? acct.balance : '';
     input.oninput = () => {
-      acct.balance = parseFloat(input.value.replace(/[^0-9.-]/g, '')) || 0;
+      acct.balance = parseFloat(input.value) || 0;
       save();
     };
     document.getElementById('balance-acct-name').textContent = acct.name;
@@ -438,11 +443,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Expenses Section ─────────────────────────────────────
   function renderExpensesSection(acct) {
     const body = document.getElementById('expenses-body');
+    // Save currently open buckets before wiping DOM
+    body.querySelectorAll('.week-body').forEach(wb => {
+      const bid = wb.id.replace('wbody-', '');
+      openBuckets[bid] = !wb.classList.contains('hidden');
+    });
     body.innerHTML = '';
 
-    const t = E.today();
     const currentBucket = E.currentBucketId();
-    const isFeb = (m) => m === 2;
 
     E.WEEK_BUCKETS.forEach(bucket => {
       const isCurrentBucket = bucket.id === currentBucket;
@@ -452,22 +460,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const group = document.createElement('div');
       group.className = 'week-group';
 
-      const nowTag  = isCurrentBucket ? `<span class="tag tag-current">Current</span>` : '';
+      const nowTag = isCurrentBucket ? `<span class="tag tag-current">Current</span>` : '';
+      // Restore open state — default open for current bucket on first render
+      const isOpen = openBuckets[bucket.id] !== undefined ? openBuckets[bucket.id] : isCurrentBucket;
 
       group.innerHTML = `
         <div class="week-group-header">
           <div class="week-label">${bucket.label} ${nowTag}</div>
           <div class="week-total" style="color:${total > 0 ? 'var(--red)' : 'var(--text-dim)'}">${total > 0 ? E.fmt(-total) : '—'}</div>
         </div>
-        <div class="week-body ${isCurrentBucket ? '' : 'hidden'}" id="wbody-${bucket.id}">
+        <div class="week-body ${isOpen ? '' : 'hidden'}" id="wbody-${bucket.id}">
           <div class="expense-rows-${bucket.id}"></div>
         </div>
       `;
 
-      // Toggle open/close
-      group.querySelector('.week-group-header').addEventListener('click', () => {
+      // Toggle open/close — only from the header row itself
+      group.querySelector('.week-group-header').addEventListener('click', e => {
+        if (e.target.closest('input, select, button, .remove-btn')) return;
         const wb = group.querySelector('.week-body');
         wb.classList.toggle('hidden');
+        openBuckets[bucket.id] = !wb.classList.contains('hidden');
       });
 
       body.appendChild(group);
@@ -478,16 +490,24 @@ document.addEventListener('DOMContentLoaded', () => {
         rowsContainer.appendChild(buildExpenseRow(acct, exp, idx, bucket, rowsContainer, group));
       });
 
-      // Add expense button
+      // Add expense button — appends a row WITHOUT re-rendering the whole section
       const addBtn = makeAddBtn('+ Add Expense', () => {
         const newExp = E.createExpenseItem({ bucketId: bucket.id, day: bucket.start });
         acct.expenses.push(newExp);
         save();
-        renderExpensesSection(acct);
+        // Ensure the bucket is open
+        const wb = group.querySelector('.week-body');
+        wb.classList.remove('hidden');
+        openBuckets[bucket.id] = true;
+        // Append just the new row — no full re-render, no page jump
+        const newIdx = acct.expenses.indexOf(newExp);
+        const newRow = buildExpenseRow(acct, newExp, newIdx, bucket, rowsContainer, group);
+        rowsContainer.appendChild(newRow);
+        // Focus the name input in the new row
+        const nameIn = newRow.querySelector('.expense-name-in');
+        if (nameIn) nameIn.focus();
         updateExpensesTotal(acct);
-        // Open the week body
-        const wb = document.getElementById(`wbody-${bucket.id}`);
-        if (wb) wb.classList.remove('hidden');
+        updateWeekTotal(group, bucket, acct);
       });
 
       const wbody = group.querySelector('.week-body');
@@ -568,18 +588,18 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="fields-2">
         <div class="field-wrap">
           <div class="field-label">Amount</div>
-          <input class="field-input red" type="number" step="0.01" min="0" placeholder="0.00" value="${ot.amount || ''}">
+          <input class="field-input red ot-amount" type="number" step="0.01" min="0" placeholder="0.00" value="${ot.amount || ''}">
         </div>
         <div class="field-wrap">
           <div class="field-label">Date</div>
-          <input class="field-input" type="date" value="${ot.date || ''}">
+          <input class="field-input ot-date" type="date" value="${ot.date || ''}">
         </div>
       </div>
       <div class="text-dim mt-6">→ Slots into: <strong class="week-slot">${bucketLabel}</strong></div>
     `;
     wrap.querySelector('.item-name-input').addEventListener('input', e => { ot.name = e.target.value; save(); });
-    wrap.querySelectorAll('input')[1].addEventListener('input', e => { ot.amount = parseFloat(e.target.value) || 0; save(); updateOneTimeTotal(acct); });
-    wrap.querySelectorAll('input')[2].addEventListener('change', e => {
+    wrap.querySelector('.ot-amount').addEventListener('input', e => { ot.amount = parseFloat(e.target.value) || 0; save(); updateOneTimeTotal(acct); });
+    wrap.querySelector('.ot-date').addEventListener('change', e => {
       ot.date = e.target.value;
       save();
       const lbl = ot.date ? (E.WEEK_BUCKETS.find(b => b.id === E.bucketForDate(ot.date))?.label || '—') : '—';
@@ -628,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="fields-2">
         <div class="field-wrap">
           <div class="field-label">Amount</div>
-          <input class="field-input purple" type="number" step="0.01" min="0" placeholder="0.00" value="${sav.amount || ''}">
+          <input class="field-input purple sav-amount" type="number" step="0.01" min="0" placeholder="0.00" value="${sav.amount || ''}">
         </div>
         <div class="field-wrap">
           <div class="field-label">Frequency</div>
@@ -641,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
     wrap.querySelector('.item-name-input').addEventListener('input', e => { sav.name = e.target.value; save(); });
-    wrap.querySelectorAll('input')[1].addEventListener('input', e => { sav.amount = parseFloat(e.target.value) || 0; save(); updateSavingsTotal(acct); });
+    wrap.querySelector('.sav-amount').addEventListener('input', e => { sav.amount = parseFloat(e.target.value) || 0; save(); updateSavingsTotal(acct); });
     wrap.querySelector('select').addEventListener('change', e => { sav.frequency = e.target.value; save(); });
     wrap.querySelector('.remove-btn').addEventListener('click', () => {
       acct.savings.splice(idx, 1);
@@ -692,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="fields-2">
         <div class="field-wrap">
           <div class="field-label">Amount</div>
-          <input class="field-input purple" type="number" step="0.01" min="0" placeholder="0.00" value="${tr.amount || ''}">
+          <input class="field-input purple tr-amount" type="number" step="0.01" min="0" placeholder="0.00" value="${tr.amount || ''}">
         </div>
         <div class="field-wrap">
           <div class="field-label">To Account</div>
@@ -725,7 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     wrap.querySelector('.item-name-input').addEventListener('input', e => { tr.name = e.target.value; save(); });
-    wrap.querySelectorAll('input')[1].addEventListener('input', e => { tr.amount = parseFloat(e.target.value) || 0; save(); });
+    wrap.querySelector('.tr-amount').addEventListener('input', e => { tr.amount = parseFloat(e.target.value) || 0; save(); });
     wrap.querySelector('.to-acct').addEventListener('change', e => { tr.toAccountId = e.target.value; save(); });
 
     wrap.querySelectorAll('.transfer-type-btn').forEach(btn => {
@@ -752,8 +772,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Section collapse toggles ─────────────────────────────
+  // Track which expense week buckets are open — must be initialized
+  // before renderExpensesSection is first called.
+  const openBuckets = {};
+  E.WEEK_BUCKETS.forEach(b => { openBuckets[b.id] = b.id === E.currentBucketId(); });
+
   document.querySelectorAll('.section-header').forEach(hdr => {
-    hdr.addEventListener('click', () => {
+    hdr.addEventListener('click', e => {
+      // Don't collapse if the click came from an input, select, button, or label inside the header
+      if (e.target !== hdr && e.target.closest('input, select, button, label, .remove-btn')) return;
       const body = hdr.nextElementSibling;
       if (!body) return;
       body.classList.toggle('hidden');
@@ -770,54 +797,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const proj = E.buildProjection(acct, state.accounts);
     const container = document.getElementById('proj-weeks');
     container.innerHTML = '';
-
-    // Projection account strip
-    renderProjAccountStrip(acct);
-
     const hasAnyVariable = proj.some(w => w.hasVariable);
-
-    if (hasAnyVariable) {
-      document.getElementById('proj-info').style.display = '';
-    } else {
-      document.getElementById('proj-info').style.display = 'none';
-    }
-
+    document.getElementById('proj-info').style.display = hasAnyVariable ? '' : 'none';
     proj.forEach((week, i) => {
       container.appendChild(buildWeekCard(week, i, acct));
-    });
-  }
-
-  function renderProjAccountStrip(activeAcct) {
-    const strip = document.getElementById('proj-account-strip');
-    if (!strip) return;
-    strip.innerHTML = '';
-    state.accounts.forEach(acct => {
-      const chip = document.createElement('div');
-      const isActive = acct.id === activeAcct.id;
-      chip.className = 'acc-chip' + (isActive ? ' active' : '');
-
-      const nameSpan = document.createElement('span');
-      nameSpan.textContent = acct.name;
-      chip.appendChild(nameSpan);
-
-      if (isActive) {
-        const editIcon = document.createElement('span');
-        editIcon.className = 'acc-edit-icon';
-        editIcon.textContent = ' ✎';
-        editIcon.title = 'Rename account';
-        editIcon.addEventListener('click', e => {
-          e.stopPropagation();
-          showRenameModal(acct);
-        });
-        chip.appendChild(editIcon);
-      }
-
-      chip.addEventListener('click', () => {
-        state.activeAccountId = acct.id;
-        save();
-        renderProjections();
-      });
-      strip.appendChild(chip);
     });
   }
 
@@ -826,112 +809,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const todayDate = new Date(t.year, t.month - 1, t.day);
     const isCurrentWeek = todayDate >= week.window.start && todayDate <= week.window.end;
 
-    // Headroom = net change this week (income minus all outflows)
     const headroom       = week.headroomExpected;
     const headroomPosNeg = headroom >= 0 ? 'pos' : 'neg';
-
-    // Ending balance sign drives its own color
-    const endingPosNeg = week.endBalanceExpected >= 0 ? 'c-income' : 'c-expense';
+    const change         = week.weekChange;
+    const changeUp       = change >= 0;
+    const changeArrow    = changeUp ? '▲' : '▼';
+    const changeClass    = changeUp ? 'c-income' : 'c-expense';
+    const endingClass    = week.endBalanceExpected >= 0 ? 'c-income' : 'c-expense';
 
     const card = document.createElement('div');
     card.className = 'week-card';
-
     const nowTag = isCurrentWeek ? '<span class="tag tag-current">Now</span>' : '';
 
-    // ── Income detail items ──────────────────────────────
     let incomeDetailHtml = '';
     for (const inc of acct.income) {
       const pays = E.payDatesInWindow(inc, week.window.start, week.window.end);
       if (!pays.length) continue;
-      const amt = inc.type === 'fixed'
-        ? inc.fixedAmount * pays.length
-        : inc.expectedAmount * pays.length;
+      const amt = inc.type === 'fixed' ? inc.fixedAmount * pays.length : inc.expectedAmount * pays.length;
       if (amt === 0) continue;
       const name = inc.name || 'Unnamed Income';
       const varNote = inc.type === 'variable' ? ' <span style="font-size:10px;opacity:0.7">(variable)</span>' : '';
-      incomeDetailHtml += `
-        <div class="proj-detail-item">
-          <span class="detail-name">${esc(name)}${varNote}</span>
-          <span class="detail-amt detail-income">${E.fmt(amt, true)}</span>
-        </div>`;
+      incomeDetailHtml += `<div class="proj-detail-item"><span class="detail-name">${esc(name)}${varNote}</span><span class="detail-amt detail-income">${E.fmt(amt, true)}</span></div>`;
     }
-    // Transfers in as income detail
     if (week.transfersIn > 0) {
-      incomeDetailHtml += `
-        <div class="proj-detail-item">
-          <span class="detail-name">Transfers In</span>
-          <span class="detail-amt detail-income">${E.fmt(week.transfersIn, true)}</span>
-        </div>`;
+      incomeDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Transfers In</span><span class="detail-amt detail-income">${E.fmt(week.transfersIn, true)}</span></div>`;
     }
 
-    // ── Expense detail items ─────────────────────────────
     let expenseDetailHtml = '';
     const { start, end } = week.window;
     const monthSegs = E.getMonthsInWindow(start, end);
-
     for (const { year, month, dayStart, dayEnd } of monthSegs) {
       const maxDay = E.daysInMonth(year, month);
       for (const exp of acct.expenses) {
         const effDay = Math.min(exp.day, maxDay);
         if (effDay >= dayStart && effDay <= dayEnd && exp.amount > 0) {
           const name = exp.name || 'Unnamed Expense';
-          expenseDetailHtml += `
-            <div class="proj-detail-item">
-              <span class="detail-name">${esc(name)}</span>
-              <span class="detail-amt detail-expense">${E.fmt(-exp.amount)}</span>
-            </div>`;
+          expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">${esc(name)}</span><span class="detail-amt detail-expense">${E.fmt(-exp.amount)}</span></div>`;
         }
       }
     }
-
-    // One-time expenses
     for (const ot of acct.oneTimeExpenses) {
       if (!ot.date) continue;
       const [oy, om, od] = ot.date.split('-').map(Number);
       const otDate = new Date(oy, om - 1, od);
       if (otDate >= start && otDate <= end && ot.amount > 0) {
         const name = ot.name || 'One-Time Expense';
-        expenseDetailHtml += `
-          <div class="proj-detail-item">
-            <span class="detail-name">${esc(name)} <span style="font-size:10px;opacity:0.7">(one-time)</span></span>
-            <span class="detail-amt detail-onetime">${E.fmt(-ot.amount)}</span>
-          </div>`;
+        expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">${esc(name)} <span style="font-size:10px;opacity:0.7">(one-time)</span></span><span class="detail-amt detail-onetime">${E.fmt(-ot.amount)}</span></div>`;
       }
     }
+    if (week.savingsOut > 0) expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Savings</span><span class="detail-amt detail-expense">${E.fmt(-week.savingsOut)}</span></div>`;
+    if (week.transfersOut > 0) expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Transfers Out</span><span class="detail-amt detail-expense">${E.fmt(-week.transfersOut)}</span></div>`;
 
-    // Savings + transfers out as expense details
-    if (week.savingsOut > 0) {
-      expenseDetailHtml += `
-        <div class="proj-detail-item">
-          <span class="detail-name">Savings</span>
-          <span class="detail-amt detail-expense">${E.fmt(-week.savingsOut)}</span>
-        </div>`;
-    }
-    if (week.transfersOut > 0) {
-      expenseDetailHtml += `
-        <div class="proj-detail-item">
-          <span class="detail-name">Transfers Out</span>
-          <span class="detail-amt detail-expense">${E.fmt(-week.transfersOut)}</span>
-        </div>`;
-    }
-
-    // ── Scenario pills ───────────────────────────────────
     let scenarioHtml = '';
     if (week.hasVariable) {
-      scenarioHtml = `
-        <div class="scenario-range">
-          <div class="range-pill pill-best">
-            <span class="range-pill-label">Best Case</span>
-            ${E.fmt(week.headroomBest, true)}
-          </div>
-          <div class="range-pill pill-worst">
-            <span class="range-pill-label">Worst Case</span>
-            ${E.fmt(week.headroomMin, true)}
-          </div>
-        </div>`;
+      scenarioHtml = `<div class="scenario-range"><div class="range-pill pill-best"><span class="range-pill-label">Best Case</span>${E.fmt(week.headroomBest, true)}</div><div class="range-pill pill-worst"><span class="range-pill-label">Worst Case</span>${E.fmt(week.headroomMin, true)}</div></div>`;
     }
 
-    // ── Total income label ───────────────────────────────
     const totalIncomeAmt = week.totalIncome + week.transfersIn;
     const totalExpAmt    = week.totalExpenses + week.savingsOut + week.transfersOut;
     const varNote = week.hasVariable ? '<span class="c-dim"> incl. variable</span>' : '';
@@ -942,51 +875,34 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="week-card-label">Week ${i + 1} ${nowTag}</div>
           <div class="week-card-dates">${E.fmtDateShort(week.window.start)} – ${E.fmtDateShort(week.window.end)}</div>
         </div>
-        <div>
+        <div style="text-align:right">
           <div class="headroom ${headroomPosNeg}">${E.fmt(headroom, true)}</div>
           <div class="headroom-label">headroom</div>
         </div>
       </div>
       <div class="week-card-body">
-
         <div class="proj-row">
           <span class="proj-row-label">Starting Balance</span>
-          <span class="proj-row-val c-balance">${E.fmt(week.startBalance)}</span>
+          <span class="proj-row-val proj-balance-big c-balance">${E.fmt(week.startBalance)}</span>
         </div>
-
         <div class="proj-divider"></div>
-
         ${incomeDetailHtml
-          ? `<div class="proj-group-total">
-               <span class="proj-row-label">+ Income</span>
-               <span class="proj-row-val c-income">${E.fmt(totalIncomeAmt, true)}${varNote}</span>
-             </div>
-             ${incomeDetailHtml}`
-          : `<div class="proj-row">
-               <span class="proj-row-label">+ Income</span>
-               <span class="proj-row-val c-income">${E.fmt(0, true)}</span>
-             </div>`
+          ? `<div class="proj-group-total"><span class="proj-row-label">+ Income</span><span class="proj-row-val c-income">${E.fmt(totalIncomeAmt, true)}${varNote}</span></div>${incomeDetailHtml}`
+          : `<div class="proj-row"><span class="proj-row-label">+ Income</span><span class="proj-row-val c-income">${E.fmt(0, true)}</span></div>`
         }
-
         <div class="proj-divider"></div>
-
         ${expenseDetailHtml
-          ? `<div class="proj-group-total">
-               <span class="proj-row-label">− Expenses</span>
-               <span class="proj-row-val c-expense">${E.fmt(-totalExpAmt)}</span>
-             </div>
-             ${expenseDetailHtml}`
-          : `<div class="proj-row">
-               <span class="proj-row-label">− Expenses</span>
-               <span class="proj-row-val c-expense">${E.fmt(0)}</span>
-             </div>`
+          ? `<div class="proj-group-total"><span class="proj-row-label">− Expenses</span><span class="proj-row-val c-expense">${E.fmt(-totalExpAmt)}</span></div>${expenseDetailHtml}`
+          : `<div class="proj-row"><span class="proj-row-label">− Expenses</span><span class="proj-row-val c-expense">${E.fmt(0)}</span></div>`
         }
-
         <div class="proj-divider"></div>
-
+        <div class="proj-row">
+          <span class="proj-row-label">Change</span>
+          <span class="proj-row-val ${changeClass}">${changeArrow} ${E.fmt(Math.abs(change))}</span>
+        </div>
         <div class="proj-row">
           <span class="proj-row-label">Ending Balance</span>
-          <span class="proj-row-val ${endingPosNeg}">${E.fmt(week.endBalanceExpected)}</span>
+          <span class="proj-row-val proj-balance-big ${endingClass}">${E.fmt(week.endBalanceExpected)}</span>
         </div>
         ${scenarioHtml}
       </div>
@@ -1018,6 +934,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Initial render ───────────────────────────────────────
   function renderAll() {
     renderSetup();
+    // If projections tab is currently visible, refresh it too
+    if (TAB_PROJ.classList.contains('active')) renderProjections();
   }
 
   // Measure the fixed header height precisely and set CSS var

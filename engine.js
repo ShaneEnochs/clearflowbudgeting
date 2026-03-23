@@ -314,7 +314,9 @@ function computeWeek(window, account, allAccounts) {
 function buildProjection(account, allAccounts, referenceDate) {
   const windows = buildWeekWindows(referenceDate);
   let runningBalance = parseFloat(account.balance) || 0;
-  return windows.map(window => {
+
+  // Pass 1: compute all weeks with running balances
+  const weeks = windows.map(window => {
     const w = computeWeek(window, account, allAccounts);
     const endExp  = runningBalance + w.netExpected;
     const endMin  = runningBalance + w.netMin;
@@ -325,15 +327,35 @@ function buildProjection(account, allAccounts, referenceDate) {
       endBalanceExpected: endExp,
       endBalanceMin:      endMin,
       endBalanceBest:     endBest,
-      // Headroom = net change this week (income - all outflows).
-      // Positive = you gained money this week. Negative = you spent more than came in.
-      headroomExpected: w.netExpected,
-      headroomMin:      w.netMin,
-      headroomBest:     w.netBest,
+      weekChange:         w.netExpected,   // raw net change this week (for Change indicator)
+      weekChangeMin:      w.netMin,
+      weekChangeBest:     w.netBest,
     };
     runningBalance = endExp;
     return result;
   });
+
+  // Pass 2: headroom for week i = the lowest ending balance across
+  // weeks i..11 (inclusive). This answers: "how much extra can I
+  // spend this week before any future week hits zero?"
+  // If that minimum is negative the account is already projected to
+  // go into deficit; headroom is reported as that negative number so
+  // the user can see how deep the hole is.
+  for (let i = 0; i < weeks.length; i++) {
+    let minExp  = Infinity;
+    let minMin  = Infinity;
+    let minBest = Infinity;
+    for (let j = i; j < weeks.length; j++) {
+      if (weeks[j].endBalanceExpected < minExp)  minExp  = weeks[j].endBalanceExpected;
+      if (weeks[j].endBalanceMin      < minMin)  minMin  = weeks[j].endBalanceMin;
+      if (weeks[j].endBalanceBest     < minBest) minBest = weeks[j].endBalanceBest;
+    }
+    weeks[i].headroomExpected = minExp;
+    weeks[i].headroomMin      = minMin;
+    weeks[i].headroomBest     = minBest;
+  }
+
+  return weeks;
 }
 
 // ── Storage ──────────────────────────────────────────────────
