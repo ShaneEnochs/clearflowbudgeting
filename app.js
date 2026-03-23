@@ -69,7 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
       chip.addEventListener('click', () => {
         state.activeAccountId = acct.id;
         save();
-        renderAll();
+        renderSetup();
+        // Always refresh projections — whether visible or not, so it's
+        // ready when the user switches to that tab
+        renderProjections();
       });
       strip.appendChild(chip);
     });
@@ -799,6 +802,35 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = '';
     const hasAnyVariable = proj.some(w => w.hasVariable);
     document.getElementById('proj-info').style.display = hasAnyVariable ? '' : 'none';
+
+    // ── 12-week summary bar ──────────────────────────────
+    const first = proj[0];
+    const last  = proj[proj.length - 1];
+    const netChange   = last.endBalanceExpected - first.startBalance;
+    const changeUp    = netChange >= 0;
+    const changeArrow = changeUp ? '▲' : '▼';
+    const changeClass = changeUp ? 'summary-pos' : 'summary-neg';
+
+    const summary = document.createElement('div');
+    summary.className = 'proj-summary';
+    summary.innerHTML = `
+      <div class="proj-summary-row">
+        <div class="proj-summary-item">
+          <div class="proj-summary-label">Today's Balance</div>
+          <div class="proj-summary-val">${E.fmt(first.startBalance)}</div>
+        </div>
+        <div class="proj-summary-arrow">→</div>
+        <div class="proj-summary-item">
+          <div class="proj-summary-label">Balance in 12 Weeks</div>
+          <div class="proj-summary-val">${E.fmt(last.endBalanceExpected)}</div>
+        </div>
+      </div>
+      <div class="proj-summary-change ${changeClass}">
+        ${changeArrow} ${E.fmt(Math.abs(netChange))} over 12 weeks
+      </div>
+    `;
+    container.appendChild(summary);
+
     proj.forEach((week, i) => {
       container.appendChild(buildWeekCard(week, i, acct));
     });

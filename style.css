@@ -124,11 +124,13 @@ body {
 .date-badge {
   background: var(--surface2);
   border: 1px solid var(--border);
-  padding: 5px 10px;
+  padding: 5px 12px;
   border-radius: 20px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
+  width: 100%;
+  text-align: center;
 }
 .btn-ghost {
   display: flex;
@@ -460,6 +462,59 @@ body {
 }
 .add-btn:hover { background: var(--accent-lt); border-color: var(--accent); }
 
+/* ── 12-week summary bar ────────────────────────────────── */
+.proj-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  box-shadow: var(--shadow);
+}
+.proj-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.proj-summary-item {
+  flex: 1;
+  text-align: center;
+}
+.proj-summary-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 4px;
+}
+.proj-summary-val {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text);
+}
+.proj-summary-arrow {
+  font-size: 18px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.proj-summary-change {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+}
+.summary-pos {
+  background: var(--accent-lt);
+  color: var(--green);
+}
+.summary-neg {
+  background: var(--red-lt);
+  color: var(--red);
+}
+
 /* ── Projections Tab ────────────────────────────────────── */
 .proj-info-bar {
   background: var(--accent2-lt);
@@ -496,7 +551,7 @@ body {
   gap: 6px;
 }
 .week-card-dates { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
-.headroom { font-family: 'DM Serif Display', serif; font-size: 26px; text-align: right; line-height: 1.1; }
+.headroom { font-family: 'DM Sans', sans-serif; font-size: 22px; font-weight: 500; text-align: right; line-height: 1.1; }
 .headroom.pos { color: var(--green); }
 .headroom.neg { color: var(--red);   }
 .headroom-label { font-size: 11px; color: var(--text-muted); text-align: right; }
@@ -505,10 +560,15 @@ body {
 
 .proj-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
 .proj-row-label { color: var(--text-muted); }
-.proj-row-val   { font-weight: 600; }
+.proj-row-val   { font-weight: 400; }
 
-/* Bigger font for Starting Balance and Ending Balance values */
-.proj-balance-big { font-family: 'DM Serif Display', serif; font-size: 18px; }
+/* Starting/Ending Balance — same font as labels, just slightly larger */
+.proj-balance-big { font-size: 15px; font-weight: 400; }
+.c-income   { color: var(--green); }
+.c-expense  { color: var(--red);   }
+.c-neutral  { color: var(--text);  }
+.c-balance  { color: var(--text);  }
+.c-dim      { color: var(--text-dim); font-size: 11px; font-weight: 400; margin-left: 4px; }
 .c-income   { color: var(--green); }
 .c-expense  { color: var(--red);   }
 .c-neutral  { color: var(--text);  }
@@ -533,7 +593,7 @@ body {
   text-overflow: ellipsis;
   margin-right: 8px;
 }
-.proj-detail-item .detail-amt { font-weight: 500; flex-shrink: 0; }
+.proj-detail-item .detail-amt { font-weight: 400; flex-shrink: 0; }
 .detail-income  { color: var(--green);  }
 .detail-expense { color: var(--red);    }
 .detail-onetime { color: var(--yellow); }
@@ -542,7 +602,7 @@ body {
   justify-content: space-between;
   align-items: baseline;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   margin-top: 2px;
 }
 
