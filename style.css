@@ -56,10 +56,21 @@ body {
 
 /* ── Sticky Header ──────────────────────────────────────── */
 .sticky-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 560px;
   z-index: 200;
   box-shadow: var(--shadow-md);
+  background: var(--surface);
+}
+
+/* Push tab content down below the fixed header.
+   Fallback 138px; JS sets --header-h precisely on load + resize. */
+.tab-content {
+  padding-top: var(--header-h, 138px);
 }
 
 /* ── Topbar ─────────────────────────────────────────────── */

@@ -953,5 +953,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSetup();
   }
 
+  // Measure the fixed header height precisely and set CSS var
+  function setHeaderOffset() {
+    const header = document.querySelector('.sticky-header');
+    if (header) {
+      const h = header.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--header-h', h + 'px');
+    }
+  }
+
   renderAll();
+  // Set after render (account strip chips may affect height)
+  requestAnimationFrame(setHeaderOffset);
+  window.addEventListener('resize', setHeaderOffset);
 });
