@@ -807,7 +807,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderProjections() {
     const acct = activeAccount();
-    const proj = E.buildProjection(acct, state.accounts);
+    const t = E.today();
+    const refDate = new Date(t.year, t.month - 1, t.day);
+    const weekStart = new Date(refDate);
+    weekStart.setDate(refDate.getDate() - refDate.getDay());
+    const weekKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth()+1).padStart(2,'0')}-${String(weekStart.getDate()).padStart(2,'0')}`;
+    const proj = E.buildProjection(acct, state.accounts, undefined, state.clearedItems, weekKey);
     const container = document.getElementById('proj-weeks');
     container.innerHTML = '';
     const hasAnyVariable = proj.some(w => w.hasVariable);
@@ -976,13 +981,10 @@ document.addEventListener('DOMContentLoaded', () => {
       card.querySelectorAll('.clear-check').forEach(btn => {
         btn.addEventListener('click', () => {
           const key = `${btn.dataset.weekKey}_${btn.dataset.itemId}`;
-          const nowCleared = !state.clearedItems[key];
-          if (nowCleared) state.clearedItems[key] = true;
-          else delete state.clearedItems[key];
+          if (state.clearedItems[key]) delete state.clearedItems[key];
+          else state.clearedItems[key] = true;
           save();
-          const row = btn.closest('.proj-detail-item');
-          row.classList.toggle('cleared', nowCleared);
-          btn.classList.toggle('checked', nowCleared);
+          renderProjections();
         });
       });
     }
