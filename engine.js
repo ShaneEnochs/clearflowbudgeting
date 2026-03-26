@@ -204,12 +204,13 @@ function getMonthsInWindow(start, end) {
  *   to a day >= 25 naturally fires in the correct window for every
  *   month length — no special-casing needed.
  */
-function computeWeek(window, account, allAccounts) {
+function computeWeek(window, account, allAccounts, clearedIds) {
   const { start, end } = window;
 
   // Income
   let incomeFixed = 0, incomeMin = 0, incomeExpected = 0, hasVariable = false;
   for (const inc of account.income) {
+    if (clearedIds && clearedIds.has(inc.id)) continue;
     const pays = payDatesInWindow(inc, start, end);
     if (!pays.length) continue;
     if (inc.type === 'fixed') {
@@ -227,6 +228,7 @@ function computeWeek(window, account, allAccounts) {
   for (const { year, month, dayStart, dayEnd } of monthSegs) {
     const maxDay = daysInMonth(year, month);
     for (const exp of account.expenses) {
+      if (clearedIds && clearedIds.has(exp.id)) continue;
       const effDay = Math.min(exp.day, maxDay);
       if (effDay >= dayStart && effDay <= dayEnd) scheduledExpenses += exp.amount;
     }
@@ -235,6 +237,7 @@ function computeWeek(window, account, allAccounts) {
   // One-time expenses
   let oneTimeExpenses = 0;
   for (const ot of account.oneTimeExpenses) {
+    if (clearedIds && clearedIds.has(ot.id)) continue;
     if (!ot.date) continue;
     const [oy, om, od] = ot.date.split('-').map(Number);
     if (dateInRange(new Date(oy, om - 1, od), start, end)) oneTimeExpenses += ot.amount;
@@ -311,13 +314,21 @@ function computeWeek(window, account, allAccounts) {
 }
 
 /** Build the full 12-week rolling projection for one account. */
-function buildProjection(account, allAccounts, referenceDate) {
+function buildProjection(account, allAccounts, referenceDate, clearedItems, weekKey) {
   const windows = buildWeekWindows(referenceDate);
   let runningBalance = parseFloat(account.balance) || 0;
 
+  // Build set of cleared item IDs for the current week (index 0)
+  let clearedIds = null;
+  if (clearedItems && weekKey) {
+    const prefix = weekKey + '_';
+    const ids = Object.keys(clearedItems).filter(k => k.startsWith(prefix)).map(k => k.slice(prefix.length));
+    if (ids.length) clearedIds = new Set(ids);
+  }
+
   // Pass 1: compute all weeks with running balances
   const weeks = windows.map(window => {
-    const w = computeWeek(window, account, allAccounts);
+    const w = computeWeek(window, account, allAccounts, window.index === 0 ? clearedIds : null);
     const endExp  = runningBalance + w.netExpected;
     const endMin  = runningBalance + w.netMin;
     const endBest = runningBalance + w.netBest;
