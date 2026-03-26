@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── State ───────────────────────────────────────────────
   let state = E.Storage.load();
+  if (!state.clearedItems) state.clearedItems = {};
 
   function save() { E.Storage.save(state); }
 
@@ -862,6 +863,10 @@ document.addEventListener('DOMContentLoaded', () => {
     card.className = 'week-card';
     const nowTag = isCurrentWeek ? '<span class="tag tag-current">Now</span>' : '';
 
+    const weekKey = isCurrentWeek
+      ? `${week.window.start.getFullYear()}-${String(week.window.start.getMonth()+1).padStart(2,'0')}-${String(week.window.start.getDate()).padStart(2,'0')}`
+      : null;
+
     let incomeDetailHtml = '';
     for (const inc of acct.income) {
       const pays = E.payDatesInWindow(inc, week.window.start, week.window.end);
@@ -870,8 +875,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (amt === 0) continue;
       const name = inc.name || 'Unnamed Income';
       const varNote = inc.type === 'variable' ? ' <span style="font-size:10px;opacity:0.7">(variable)</span>' : '';
-      const incPastClass = isCurrentWeek && pays.every(pd => pd <= todayDate) ? ' past-item' : '';
-      incomeDetailHtml += `<div class="proj-detail-item${incPastClass}"><span class="detail-name">${esc(name)}${varNote}</span><span class="detail-amt detail-income">${E.fmt(amt, true)}</span></div>`;
+      if (isCurrentWeek) {
+        const cleared = !!state.clearedItems[`${weekKey}_${inc.id}`];
+        const checkHtml = `<button class="clear-check${cleared ? ' checked' : ''}" data-item-id="${inc.id}" data-week-key="${weekKey}">✓</button>`;
+        incomeDetailHtml += `<div class="proj-detail-item clearable${cleared ? ' cleared' : ''}">${checkHtml}<span class="detail-name">${esc(name)}${varNote}</span><span class="detail-amt detail-income">${E.fmt(amt, true)}</span></div>`;
+      } else {
+        incomeDetailHtml += `<div class="proj-detail-item"><span class="detail-name">${esc(name)}${varNote}</span><span class="detail-amt detail-income">${E.fmt(amt, true)}</span></div>`;
+      }
     }
     if (week.transfersIn > 0) {
       incomeDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Transfers In</span><span class="detail-amt detail-income">${E.fmt(week.transfersIn, true)}</span></div>`;
@@ -886,8 +896,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const effDay = Math.min(exp.day, maxDay);
         if (effDay >= dayStart && effDay <= dayEnd && exp.amount > 0) {
           const name = exp.name || 'Unnamed Expense';
-          const expPastClass = isCurrentWeek && new Date(year, month - 1, effDay) <= todayDate ? ' past-item' : '';
-          expenseDetailHtml += `<div class="proj-detail-item${expPastClass}"><span class="detail-name">${esc(name)}</span><span class="detail-amt detail-expense">${E.fmt(-exp.amount)}</span></div>`;
+          if (isCurrentWeek) {
+            const cleared = !!state.clearedItems[`${weekKey}_${exp.id}`];
+            const checkHtml = `<button class="clear-check${cleared ? ' checked' : ''}" data-item-id="${exp.id}" data-week-key="${weekKey}">✓</button>`;
+            expenseDetailHtml += `<div class="proj-detail-item clearable${cleared ? ' cleared' : ''}">${checkHtml}<span class="detail-name">${esc(name)}</span><span class="detail-amt detail-expense">${E.fmt(-exp.amount)}</span></div>`;
+          } else {
+            expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">${esc(name)}</span><span class="detail-amt detail-expense">${E.fmt(-exp.amount)}</span></div>`;
+          }
         }
       }
     }
@@ -897,8 +912,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const otDate = new Date(oy, om - 1, od);
       if (otDate >= start && otDate <= end && ot.amount > 0) {
         const name = ot.name || 'One-Time Expense';
-        const otPastClass = isCurrentWeek && otDate <= todayDate ? ' past-item' : '';
-        expenseDetailHtml += `<div class="proj-detail-item${otPastClass}"><span class="detail-name">${esc(name)} <span style="font-size:10px;opacity:0.7">(one-time)</span></span><span class="detail-amt detail-onetime">${E.fmt(-ot.amount)}</span></div>`;
+        if (isCurrentWeek) {
+          const cleared = !!state.clearedItems[`${weekKey}_${ot.id}`];
+          const checkHtml = `<button class="clear-check${cleared ? ' checked' : ''}" data-item-id="${ot.id}" data-week-key="${weekKey}">✓</button>`;
+          expenseDetailHtml += `<div class="proj-detail-item clearable${cleared ? ' cleared' : ''}">${checkHtml}<span class="detail-name">${esc(name)} <span style="font-size:10px;opacity:0.7">(one-time)</span></span><span class="detail-amt detail-onetime">${E.fmt(-ot.amount)}</span></div>`;
+        } else {
+          expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">${esc(name)} <span style="font-size:10px;opacity:0.7">(one-time)</span></span><span class="detail-amt detail-onetime">${E.fmt(-ot.amount)}</span></div>`;
+        }
       }
     }
     if (week.savingsOut > 0) expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Savings</span><span class="detail-amt detail-expense">${E.fmt(-week.savingsOut)}</span></div>`;
@@ -951,6 +971,21 @@ document.addEventListener('DOMContentLoaded', () => {
         ${scenarioHtml}
       </div>
     `;
+
+    if (isCurrentWeek) {
+      card.querySelectorAll('.clear-check').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = `${btn.dataset.weekKey}_${btn.dataset.itemId}`;
+          const nowCleared = !state.clearedItems[key];
+          if (nowCleared) state.clearedItems[key] = true;
+          else delete state.clearedItems[key];
+          save();
+          const row = btn.closest('.proj-detail-item');
+          row.classList.toggle('cleared', nowCleared);
+          btn.classList.toggle('checked', nowCleared);
+        });
+      });
+    }
 
     return card;
   }

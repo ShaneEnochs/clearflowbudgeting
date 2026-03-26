@@ -38,7 +38,7 @@ function createDefaultAccount(id, name) {
 
 function createDefaultState() {
   const acct = createDefaultAccount('acct_1', 'My Checking');
-  return { accounts: [acct], activeAccountId: 'acct_1' };
+  return { accounts: [acct], activeAccountId: 'acct_1', clearedItems: {} };
 }
 
 function createIncomeItem(overrides = {}) {
