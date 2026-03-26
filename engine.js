@@ -246,6 +246,7 @@ function computeWeek(window, account, allAccounts, clearedIds) {
   // Savings — monthly fires when window overlaps the 1st–6th of a month
   let savingsOut = 0;
   for (const sav of account.savings) {
+    if (clearedIds && clearedIds.has(sav.id)) continue;
     if (sav.frequency === 'monthly') {
       for (const { dayStart, dayEnd } of monthSegs) {
         if (dayStart <= 6 && dayEnd >= 1) savingsOut += sav.amount;
@@ -260,6 +261,7 @@ function computeWeek(window, account, allAccounts, clearedIds) {
   // Transfers out
   let transfersOut = 0;
   for (const tr of account.transfers) {
+    if (clearedIds && clearedIds.has(tr.id)) continue;
     if (tr.type === 'onetime') {
       if (!tr.date) continue;
       const [ty, tm, td] = tr.date.split('-').map(Number);
@@ -281,6 +283,7 @@ function computeWeek(window, account, allAccounts, clearedIds) {
     if (acct.id === account.id) continue;
     for (const tr of acct.transfers) {
       if (tr.toAccountId !== account.id) continue;
+      if (clearedIds && clearedIds.has(tr.id)) continue;
       if (tr.type === 'onetime') {
         if (!tr.date) continue;
         const [ty, tm, td] = tr.date.split('-').map(Number);
@@ -614,7 +617,7 @@ window.Engine = {
   createExpenseItem, createOneTimeExpense, createSavingsItem, createTransferItem,
   buildProjection, buildWeekWindows, computeWeek,
   bucketForDay, bucketForDate, currentBucketId, daysInMonth,
-  payDatesInWindow, getMonthsInWindow,
+  payDatesInWindow, getMonthsInWindow, dateInRange,
   Storage,
   uid, today, fmt, fmtDate, fmtDateShort,
   WEEK_BUCKETS, FREQUENCIES, PAY_DAYS,
