@@ -851,6 +851,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function transferFires(tr, win, monthSegs) {
+    if (tr.type === 'onetime') {
+      if (!tr.date) return false;
+      const [y, m, d] = tr.date.split('-').map(Number);
+      return E.dateInRange(new Date(y, m - 1, d), win.start, win.end);
+    }
+    if (tr.frequency === 'weekly') return true;
+    if (tr.frequency === 'biweekly') return win.index % 2 === 0;
+    if (tr.frequency === 'monthly') return monthSegs.some(({ dayStart, dayEnd }) => dayStart <= 6 && dayEnd >= 1);
+    return false;
+  }
+
+  function savingFires(sav, win, monthSegs) {
+    if (sav.frequency === 'weekly') return true;
+    if (sav.frequency === 'biweekly') return win.index % 2 === 0;
+    if (sav.frequency === 'monthly') return monthSegs.some(({ dayStart, dayEnd }) => dayStart <= 6 && dayEnd >= 1);
+    return false;
+  }
+
   function buildWeekCard(week, i, acct) {
     const t = E.today();
     const todayDate = new Date(t.year, t.month - 1, t.day);
@@ -872,6 +891,9 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `${week.window.start.getFullYear()}-${String(week.window.start.getMonth()+1).padStart(2,'0')}-${String(week.window.start.getDate()).padStart(2,'0')}`
       : null;
 
+    const { start, end } = week.window;
+    const monthSegs = E.getMonthsInWindow(start, end);
+
     let incomeDetailHtml = '';
     for (const inc of acct.income) {
       const pays = E.payDatesInWindow(inc, week.window.start, week.window.end);
@@ -888,13 +910,24 @@ document.addEventListener('DOMContentLoaded', () => {
         incomeDetailHtml += `<div class="proj-detail-item"><span class="detail-name">${esc(name)}${varNote}</span><span class="detail-amt detail-income">${E.fmt(amt, true)}</span></div>`;
       }
     }
-    if (week.transfersIn > 0) {
+    if (isCurrentWeek) {
+      for (const otherAcct of state.accounts) {
+        if (otherAcct.id === acct.id) continue;
+        for (const tr of otherAcct.transfers) {
+          if (tr.toAccountId !== acct.id) continue;
+          if (!transferFires(tr, week.window, monthSegs)) continue;
+          if (tr.amount <= 0) continue;
+          const name = tr.name || otherAcct.name || 'Transfer In';
+          const cleared = !!state.clearedItems[`${weekKey}_${tr.id}`];
+          const checkHtml = `<button class="clear-check${cleared ? ' checked' : ''}" data-item-id="${tr.id}" data-week-key="${weekKey}">✓</button>`;
+          incomeDetailHtml += `<div class="proj-detail-item clearable${cleared ? ' cleared' : ''}">${checkHtml}<span class="detail-name">${esc(name)}</span><span class="detail-amt detail-income">${E.fmt(tr.amount, true)}</span></div>`;
+        }
+      }
+    } else if (week.transfersIn > 0) {
       incomeDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Transfers In</span><span class="detail-amt detail-income">${E.fmt(week.transfersIn, true)}</span></div>`;
     }
 
     let expenseDetailHtml = '';
-    const { start, end } = week.window;
-    const monthSegs = E.getMonthsInWindow(start, end);
     for (const { year, month, dayStart, dayEnd } of monthSegs) {
       const maxDay = E.daysInMonth(year, month);
       for (const exp of acct.expenses) {
@@ -926,8 +959,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
-    if (week.savingsOut > 0) expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Savings</span><span class="detail-amt detail-expense">${E.fmt(-week.savingsOut)}</span></div>`;
-    if (week.transfersOut > 0) expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Transfers Out</span><span class="detail-amt detail-expense">${E.fmt(-week.transfersOut)}</span></div>`;
+    if (isCurrentWeek) {
+      for (const sav of acct.savings) {
+        if (!savingFires(sav, week.window, monthSegs)) continue;
+        if (sav.amount <= 0) continue;
+        const name = sav.name || 'Savings';
+        const cleared = !!state.clearedItems[`${weekKey}_${sav.id}`];
+        const checkHtml = `<button class="clear-check${cleared ? ' checked' : ''}" data-item-id="${sav.id}" data-week-key="${weekKey}">✓</button>`;
+        expenseDetailHtml += `<div class="proj-detail-item clearable${cleared ? ' cleared' : ''}">${checkHtml}<span class="detail-name">${esc(name)}</span><span class="detail-amt detail-expense">${E.fmt(-sav.amount)}</span></div>`;
+      }
+      for (const tr of acct.transfers) {
+        if (!transferFires(tr, week.window, monthSegs)) continue;
+        if (tr.amount <= 0) continue;
+        const name = tr.name || 'Transfer Out';
+        const cleared = !!state.clearedItems[`${weekKey}_${tr.id}`];
+        const checkHtml = `<button class="clear-check${cleared ? ' checked' : ''}" data-item-id="${tr.id}" data-week-key="${weekKey}">✓</button>`;
+        expenseDetailHtml += `<div class="proj-detail-item clearable${cleared ? ' cleared' : ''}">${checkHtml}<span class="detail-name">${esc(name)}</span><span class="detail-amt detail-expense">${E.fmt(-tr.amount)}</span></div>`;
+      }
+    } else {
+      if (week.savingsOut > 0) expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Savings</span><span class="detail-amt detail-expense">${E.fmt(-week.savingsOut)}</span></div>`;
+      if (week.transfersOut > 0) expenseDetailHtml += `<div class="proj-detail-item"><span class="detail-name">Transfers Out</span><span class="detail-amt detail-expense">${E.fmt(-week.transfersOut)}</span></div>`;
+    }
 
     let scenarioHtml = '';
     if (week.hasVariable) {
