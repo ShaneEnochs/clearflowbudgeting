@@ -656,6 +656,10 @@ body {
 .detail-expense { color: var(--red);    }
 .detail-onetime { color: var(--yellow); }
 
+/* "Already happened" indicator for Week 1 past items */
+.proj-detail-item.past-item { opacity: 0.55; }
+.proj-detail-item.past-item .detail-name::before { content: '✓ '; font-weight: 600; }
+
 .proj-group-total {
   display: flex;
   justify-content: space-between;
