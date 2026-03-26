@@ -656,9 +656,18 @@ body {
 .detail-expense { color: var(--red);    }
 .detail-onetime { color: var(--yellow); }
 
-/* "Already happened" indicator for Week 1 past items */
-.proj-detail-item.past-item { opacity: 0.55; }
-.proj-detail-item.past-item .detail-name::before { content: '✓ '; font-weight: 600; }
+/* Week 1 clearable checkboxes */
+.proj-detail-item.clearable { padding-left: 4px; align-items: center; gap: 6px; }
+.clear-check {
+  width: 16px; height: 16px; flex-shrink: 0;
+  border-radius: 50%; border: 1.5px solid var(--border);
+  background: none; cursor: pointer;
+  font-size: 9px; color: transparent;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; line-height: 1;
+}
+.clear-check.checked { border-color: var(--green); background: var(--accent-lt); color: var(--green); }
+.proj-detail-item.cleared { opacity: 0.5; }
 
 .proj-group-total {
   display: flex;
