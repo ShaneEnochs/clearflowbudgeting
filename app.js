@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <table>
         <tr>
           <th>Week</th><th>Dates</th><th>Income</th><th>Expenses</th>
-          <th>Savings</th><th>Change</th><th>Ending Balance</th><th>Headroom (safe to spend)</th>
+          <th>Savings</th><th>Change</th><th>Ending Balance</th><th>Safe to Spend</th>
         </tr>`;
 
     proj.forEach((w, i) => {
@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td class="neg">${E.fmt(-(w.savingsOut), true)}</td>
         <td class="${changeCls}">${arrow} ${E.fmt(Math.abs(w.weekChange))}</td>
         <td class="${posNeg}">${E.fmt(w.endBalanceExpected)}</td>
-        <td class="${posNeg}">${E.fmt(w.headroomExpected, true)}</td>
+        <td class="${w.shortfallExpected < 0 ? 'neg' : 'pos'}">${w.shortfallExpected < 0 ? 'Short ' + E.fmt(Math.abs(w.shortfallExpected)) : E.fmt(w.safeToSpendExpected)}</td>
       </tr>`;
     });
 
@@ -875,8 +875,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const todayDate = new Date(t.year, t.month - 1, t.day);
     const isCurrentWeek = todayDate >= week.window.start && todayDate <= week.window.end;
 
-    const headroom       = week.headroomExpected;
-    const headroomPosNeg = headroom >= 0 ? 'pos' : 'neg';
+    const safeToSpend    = week.safeToSpendExpected;
+    const shortfall      = week.shortfallExpected;
+    const headroomPosNeg = shortfall < 0 ? 'neg' : 'pos';
+    const headroomValue  = shortfall < 0 ? E.fmt(Math.abs(shortfall)) : E.fmt(safeToSpend);
+    const headroomLabel  = shortfall < 0 ? 'projected shortfall' : (isCurrentWeek ? 'safe to spend this week' : 'future safe-to-spend');
     const change         = week.weekChange;
     const changeUp       = change >= 0;
     const changeArrow    = changeUp ? '▲' : '▼';
@@ -983,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let scenarioHtml = '';
     if (week.hasVariable) {
-      scenarioHtml = `<div class="scenario-range"><div class="range-pill pill-best"><span class="range-pill-label">Best Case</span>${E.fmt(week.headroomBest, true)}</div><div class="range-pill pill-worst"><span class="range-pill-label">Worst Case</span>${E.fmt(week.headroomMin, true)}</div></div>`;
+      scenarioHtml = `<div class="scenario-range"><div class="range-pill pill-best"><span class="range-pill-label">Best Safe Spend</span>${E.fmt(week.safeToSpendBest)}</div><div class="range-pill pill-worst"><span class="range-pill-label">Worst Safe Spend</span>${E.fmt(week.safeToSpendMin)}</div></div>`;
     }
 
     const totalIncomeAmt = week.totalIncome + week.transfersIn;
@@ -997,8 +1000,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="week-card-dates">${E.fmtDateShort(week.window.start)} – ${E.fmtDateShort(week.window.end)}</div>
         </div>
         <div style="text-align:right">
-          <div class="headroom ${headroomPosNeg}">${E.fmt(headroom, true)}</div>
-          <div class="headroom-label">headroom</div>
+          <div class="headroom ${headroomPosNeg}">${shortfall < 0 ? 'Short ' : ''}${headroomValue}</div>
+          <div class="headroom-label">${headroomLabel}</div>
         </div>
       </div>
       <div class="week-card-body">
