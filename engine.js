@@ -118,31 +118,47 @@ function payDatesInWindow(incomeItem, windowStart, windowEnd) {
   let cursor = new Date(y, m - 1, d);
   const start = new Date(windowStart);
   const end   = new Date(windowEnd);
-  const stepMs = frequencyMs(incomeItem.frequency);
-
   if (cursor > end) {
-    while (cursor > end) cursor = new Date(cursor.getTime() - stepMs);
+    while (cursor > end) cursor = addFrequency(cursor, incomeItem.frequency, -1, d);
   } else {
-    while (cursor > start) cursor = new Date(cursor.getTime() - stepMs);
-    if (cursor < start)   cursor = new Date(cursor.getTime() + stepMs);
+    while (cursor > start) cursor = addFrequency(cursor, incomeItem.frequency, -1, d);
+    if (cursor < start)   cursor = addFrequency(cursor, incomeItem.frequency, 1, d);
   }
 
   const dates = [];
   let scan = new Date(cursor);
   while (scan <= end) {
     if (scan >= start) dates.push(new Date(scan));
-    scan = new Date(scan.getTime() + stepMs);
+    scan = addFrequency(scan, incomeItem.frequency, 1, d);
   }
   return dates;
 }
 
-function frequencyMs(freq) {
+function addFrequency(date, freq, direction = 1, anchorDay = date.getDate()) {
   switch (freq) {
-    case 'weekly':   return 7     * 86400000;
-    case 'biweekly': return 14    * 86400000;
-    case 'monthly':  return 30.4375 * 86400000;
-    default:         return 14    * 86400000;
+    case 'weekly':
+      return addDays(date, 7 * direction);
+    case 'biweekly':
+      return addDays(date, 14 * direction);
+    case 'monthly':
+      return addMonthsClamped(date, direction, anchorDay);
+    default:
+      return addDays(date, 14 * direction);
   }
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function addMonthsClamped(date, months, anchorDay = date.getDate()) {
+  const target = new Date(date);
+  target.setDate(1);
+  target.setMonth(target.getMonth() + months);
+  target.setDate(Math.min(anchorDay, daysInMonth(target.getFullYear(), target.getMonth() + 1)));
+  return target;
 }
 
 function dateInRange(date, rangeStart, rangeEnd) {
@@ -352,9 +368,9 @@ function buildProjection(account, allAccounts, referenceDate, clearedItems, week
   // Pass 2: headroom for week i = the lowest ending balance across
   // weeks i..11 (inclusive). This answers: "how much extra can I
   // spend this week before any future week hits zero?"
-  // If that minimum is negative the account is already projected to
-  // go into deficit; headroom is reported as that negative number so
-  // the user can see how deep the hole is.
+  // The raw headroom can be negative when the account is already projected
+  // to hit a deficit. In that case, safe-to-spend is $0 and shortfall shows
+  // how much money must be added or removed from planned outflows.
   for (let i = 0; i < weeks.length; i++) {
     let minExp  = Infinity;
     let minMin  = Infinity;
@@ -367,6 +383,12 @@ function buildProjection(account, allAccounts, referenceDate, clearedItems, week
     weeks[i].headroomExpected = minExp;
     weeks[i].headroomMin      = minMin;
     weeks[i].headroomBest     = minBest;
+    weeks[i].safeToSpendExpected = Math.max(0, minExp);
+    weeks[i].safeToSpendMin      = Math.max(0, minMin);
+    weeks[i].safeToSpendBest     = Math.max(0, minBest);
+    weeks[i].shortfallExpected   = Math.min(0, minExp);
+    weeks[i].shortfallMin        = Math.min(0, minMin);
+    weeks[i].shortfallBest       = Math.min(0, minBest);
   }
 
   return weeks;
@@ -394,7 +416,7 @@ function fmtDate(d)      { return d.toLocaleDateString('en-US', { month: 'short'
 function fmtDateShort(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 
 // ════════════════════════════════════════════════════════════
-// TEST SUITE — 30 checks
+// TEST SUITE — 32 checks
 // ════════════════════════════════════════════════════════════
 function runTests() {
   const results = [];
@@ -590,14 +612,43 @@ function runTests() {
     check('T29b transfer in to destination',   buildProjection(dst, [src, dst], REF)[0].transfersIn,  400);
   }
 
-  // ── T30: Negative headroom
+  // ── T30: Monthly pay dates stay on calendar months instead of drifting by average-day math
+  {
+    const inc = createIncomeItem({ nextPayDate: '2026-01-31', frequency: 'monthly', type: 'fixed', fixedAmount: 1000 });
+    const acct = makeAccount({ income: [inc] });
+    const proj = buildProjection(acct, [acct], new Date(2026, 0, 25)); // Week 0 = Jan 25–31; Week 4 = Feb 22–28
+    check('T30 monthly pay Jan 31 fires in Jan 25–31', proj[0].incomeFixed, 1000);
+    check('T30b monthly pay Jan 31 clamps to Feb 28', proj[4].incomeFixed, 1000);
+    check('T30c monthly pay Jan 31 returns to Mar 31 after February clamp', proj[9].incomeFixed, 1000);
+  }
+
+  // ── T31: Headroom converts the lowest future balance into safe-to-spend
+  {
+    const acct = makeAccount({
+      balance: 500,
+      oneTimeExpenses: [
+        createOneTimeExpense({ date: '2026-03-23', amount: 100 }),
+        createOneTimeExpense({ date: '2026-03-30', amount: 250 }),
+      ],
+    });
+    const proj = buildProjection(acct, [acct], REF);
+    check('T31 headroom is lowest future ending balance', proj[0].headroomExpected, 150);
+    check('T31b safe-to-spend matches positive headroom', proj[0].safeToSpendExpected, 150);
+    check('T31c no shortfall when headroom is positive', proj[0].shortfallExpected, 0);
+  }
+
+  // ── T32: Negative headroom becomes $0 safe-to-spend plus a shortfall
   {
     const acct = makeAccount({
       balance: 50,
       expenses: [createExpenseItem({ day: 23, amount: 600, bucketId: 'w4' })],
     });
-    check('T30 negative headroom when expenses exceed balance',
+    check('T32 negative headroom when expenses exceed balance',
       buildProjection(acct, [acct], REF)[0].endBalanceExpected < 0 ? 1 : 0, 1);
+    check('T32b negative headroom means nothing safe to spend',
+      buildProjection(acct, [acct], REF)[0].safeToSpendExpected, 0);
+    check('T32c negative headroom is exposed as shortfall',
+      buildProjection(acct, [acct], REF)[0].shortfallExpected, -1750);
   }
 
   // ── Summary ──────────────────────────────────────────────

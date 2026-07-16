@@ -6,12 +6,12 @@ A mobile-first, single-page budget planning web app. No backend, no login, no co
 
 - **Multiple bank accounts** — add as many as you need
 - **Income tracking** — fixed or variable, weekly/bi-weekly/monthly, Thursday or Friday pay days
-- **Expense buckets** — organized by week of month (1–7, 8–14, 15–21, 22–28, 29–31)
-- **February handling** — expenses on days 29–31 automatically shift to the 22–28 week in Feb
+- **Expense buckets** — organized into five monthly windows (1–6, 7–12, 13–18, 19–24, 25–end of month)
+- **End-of-month handling** — expenses and monthly pay dates on days 29–31 automatically clamp to the last valid day of shorter months
 - **One-time expenses** — auto-slotted into the correct week
 - **Savings goals** — weekly, bi-weekly, or monthly
 - **Transfers** — regular or one-time, between accounts
-- **12-week projections** — rolling balance, headroom, green/red coloring
+- **12-week projections** — rolling balance, safe-to-spend headroom, green/red coloring
 - **Best/Worst case** — shown when variable income exists
 - **Auto-save** — persists in browser localStorage
 - **PDF export** — download projection as a file
@@ -29,7 +29,7 @@ A mobile-first, single-page budget planning web app. No backend, no login, no co
 ```
 index.html   — Main HTML shell
 style.css    — All styles (light theme, mobile-first)
-engine.js    — Data model, projection engine, localStorage, 31 unit tests
+engine.js    — Data model, projection engine, localStorage, 32 unit-test scenarios
 app.js       — UI rendering and event handling
 ```
 
@@ -39,7 +39,7 @@ Open the browser console and type:
 ```js
 Engine.runTests()
 ```
-This runs 31 arithmetic checks covering: date math, February edge cases, pay schedule logic, income calculations, expense bucketing, transfer math, and 12-week projection chaining.
+This runs 44 arithmetic checks covering: date math, February edge cases, monthly pay-date clamping, pay schedule logic, income calculations, expense bucketing, transfer math, and 12-week projection chaining.
 
 ## Data
 
